@@ -1,28 +1,22 @@
 package com.example.examplemod;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiIngame;
-import net.minecraft.client.gui.GuiOverlayDebug;
 import net.minecraft.entity.Entity;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.RayTraceFluidMode;
 import net.minecraft.util.math.RayTraceResult;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
-import net.minecraftforge.client.event.RenderGameOverlayEvent.ElementType;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.common.ObfuscationReflectionHelper;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+
+import java.util.ArrayList;
 
 // The value here should match an entry in the META-INF/mods.toml file
 @Mod("examplemod")
 public class ExampleMod
 {
-    // Directly reference a log4j logger.
-    private static final Logger LOGGER = LogManager.getLogger();
-
-    public static double looking_at_distance = 200; // default 20
+    public static double looking_at_distance = 20000; // default 20
 
     public ExampleMod() {
         // Register ourselves for server and other game events we are interested in
@@ -30,40 +24,30 @@ public class ExampleMod
     }
 
     @SubscribeEvent
-    public void onPostOverlayRender(RenderGameOverlayEvent.Post event) {
-        if (event.getType() != ElementType.DEBUG) {
-            return;
+    public void onPostOverlayRender(RenderGameOverlayEvent.Text event) {
+        // Re-do, with modification, what was done in net.minecraftforge.client.GuiIngameForge.GuiOverlayDebugForge.update()
+        Entity entity = Minecraft.getInstance().getRenderViewEntity();
+        RayTraceResult rayTraceBlock = entity.rayTrace(looking_at_distance, 0.0F, RayTraceFluidMode.NEVER);
+        RayTraceResult rayTraceFluid = entity.rayTrace(looking_at_distance, 0.0F, RayTraceFluidMode.ALWAYS);
+
+        // Remove what was done in net.minecraft.client.gui.GuiOverlayDebug.call()
+        // It added up to two "Looking at " entries to the end of the list.
+        ArrayList<String> list = event.getLeft();
+        for (int i = 0; i < list.size(); i++) {
+            if (list.get(i).startsWith("Looking at ")) {
+                list.remove(i);
+                i--;
+            }
         }
 
-        GuiIngame guiIngame = Minecraft.getInstance().ingameGUI;
-        GuiOverlayDebug overlayDebug = getOverlayDebug(guiIngame);
-
-        // Override what was done in net.minecraftforge.client.GuiIngameForge.GuiOverlayDebugForge.update()
-        Entity entity = Minecraft.getInstance().getRenderViewEntity();
-        setTraceBlock(overlayDebug, entity.rayTrace(looking_at_distance, 0.0F, RayTraceFluidMode.NEVER));
-        setTraceFluid(overlayDebug, entity.rayTrace(looking_at_distance, 0.0F, RayTraceFluidMode.ALWAYS));
-        RayTraceResult blockTrackOut = ObfuscationReflectionHelper.getPrivateValue(GuiOverlayDebug.class, overlayDebug, "field_211537_g");
-        LOGGER.info(blockTrackOut.getBlockPos());
-    }
-
-    /*
-     * Access protected field GuiOverlayDebug.overlayDebug
-     */
-    private static GuiOverlayDebug getOverlayDebug(GuiIngame instance) {
-        return ObfuscationReflectionHelper.getPrivateValue(GuiIngame.class, instance, "field_175198_t");
-    }
-
-    /*
-     * Mutate private field GuiOverlayDebug.rayTraceBlock
-     */
-    private static void setTraceBlock(GuiOverlayDebug overlayDebug, RayTraceResult value) {
-        ObfuscationReflectionHelper.setPrivateValue(GuiOverlayDebug.class, overlayDebug, value, "field_211537_g");
-    }
-
-    /*
-     * Mutate private field GuiOverlayDebug.rayTraceFluid
-     */
-    private static void setTraceFluid(GuiOverlayDebug overlayDebug, RayTraceResult value) {
-        ObfuscationReflectionHelper.setPrivateValue(GuiOverlayDebug.class, overlayDebug, value, "field_211538_h");
+        // Re-do it with our new field instead of 20.
+        if (rayTraceBlock != null && rayTraceBlock.type == RayTraceResult.Type.BLOCK) {
+           BlockPos blockpos1 = rayTraceBlock.getBlockPos();
+           list.add(String.format("Looking at block: %d %d %d", blockpos1.getX(), blockpos1.getY(), blockpos1.getZ()));
+        }
+        if (rayTraceFluid != null && rayTraceFluid.type == RayTraceResult.Type.BLOCK) {
+           BlockPos blockpos2 = rayTraceFluid.getBlockPos();
+           list.add(String.format("Looking at liquid: %d %d %d", blockpos2.getX(), blockpos2.getY(), blockpos2.getZ()));
+        }
     }
 }
