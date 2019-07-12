@@ -1,3 +1,7 @@
+Looking Far is a Minecraft mod that increases the range of "looking at" on the debug screen. Requires Forge v1.14.3-27.0.31 or later.
+
+Below are the standard instructions for building a Forge mod.
+
 -------------------------------------------
 Source installation information for modders
 -------------------------------------------
